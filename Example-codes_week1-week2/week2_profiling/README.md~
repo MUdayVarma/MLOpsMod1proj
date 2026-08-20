@@ -1,0 +1,62 @@
+# Week 2 — Profiling ML Workloads & Parallel Computing Basics
+
+Live demos for the Week 2 deck (`slides/week2/week2_hpc_fundamentals.tex`).
+Everything here runs on a laptop; the lessons transfer directly to the GPU
+tools named on the slides (nvidia-smi, Nsight, PyTorch profiler).
+
+## Prerequisites
+
+- A C compiler (`clang` on macOS, `gcc` on Linux) — for the cache demo only.
+- Python 3.8+ with **numpy**. `pip install numpy`.
+- `matplotlib` is **optional** (every script prints a text table without it).
+
+## Demos
+
+| File | Slide it backs | One-line objective |
+| --- | --- | --- |
+| `cache_locality.c` | "Why Data Layout Matters: Row vs Column Access" | Same FLOPs, different memory layout → measurable slowdown. |
+| `amdahl_gustafson.py` | "Amdahl's Law", "Gustafson's Law", "Strong vs Weak Scaling" | Why a serial fraction caps speedup, and why big clusters still pay off. |
+| `roofline.py` | "Arithmetic Intensity", "The Roofline Model", "Reading a Roofline" | Measure SAXPY vs GEMM and classify each as memory- or compute-bound. |
+| `timing_correctly.py` | "Measure, Don't Guess", "How to Time Correctly" | Warmup + averaging + (on GPU) synchronize — the right way to benchmark. |
+| `profile_pipeline.py` | "Diagnosing a Slow Training Run", "Common ML Bottlenecks" | Use a profiler to find an I/O-bound loop, then overlap the loader to fix it. |
+
+## Run them
+
+```bash
+make run                        # compile + run the cache-locality demo
+./cache_locality 8192           # bigger matrix => bigger cache-miss penalty
+
+python3 amdahl_gustafson.py            # f=0.95 (5% serial => 20x ceiling)
+python3 amdahl_gustafson.py --f 0.75   # heavier serial fraction
+
+python3 roofline.py                    # SAXPY (memory-bound) vs GEMM (compute-bound)
+python3 timing_correctly.py            # wrong vs right benchmarking
+python3 profile_pipeline.py            # cProfile finds the bottleneck, then fix it
+```
+
+## What to demonstrate & narrate
+
+- **cache_locality**: run it, point at the ~3x slowdown. "Identical arithmetic.
+  The only change is stride-1 vs stride-N access. This is the memory wall in one
+  screen, and it is why Week 3 obsesses over layout and tiling."
+- **amdahl_gustafson**: read the ceiling line aloud — "5% serial caps you at
+  20x on infinite hardware." Then contrast the Gustafson column climbing
+  linearly: "that is weak scaling, how frontier models actually use 1024 GPUs."
+- **roofline**: the punchline is the two AI values (~0.08 vs ~100) landing on
+  different roofs *on the same laptop*. Tie back: "attention/norm/elementwise
+  are the SAXPY case; big GEMMs are the compute case."
+- **timing_correctly**: show the cold call is inflated, then say the GPU version
+  adds `torch.cuda.synchronize()` because kernel launches are async.
+- **profile_pipeline**: run `--profile-only` first to reveal `load_batch`
+  dominating; then run the full script to show the prefetch fix reclaiming time.
+
+## Cluster / GPU path (what changes on the real system)
+
+- Replace the numpy GEMM in `roofline.py` with a `torch` GEMM on CUDA and wrap
+  timing in `torch.cuda.synchronize()`; read achieved TFLOP/s against the
+  vendor peak sheet.
+- `nvidia-smi dmon -s u` during a step to watch the utilisation the slides warn
+  about ("100% can lie"). Pair it with `nsys profile python train.py` and open
+  the timeline to see the GPU gaps `profile_pipeline.py` simulates.
+- The `profile_pipeline.py` fix maps to PyTorch's `DataLoader(num_workers=N,
+  prefetch_factor=k, pin_memory=True)`.

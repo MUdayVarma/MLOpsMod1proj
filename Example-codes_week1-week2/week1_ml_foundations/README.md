@@ -1,0 +1,26 @@
+# Week 1 Live Examples — Fundamentals of AI & ML
+
+Two short, instructor-facing demos that turn the Week 1 slide claims into
+running code. Both need **only Python 3 + NumPy** (matplotlib optional) and run
+on a bare laptop or a cluster login node.
+
+| Script | Slide segment | Proves |
+| --- | --- | --- |
+| `train_from_scratch.py` | S5 — Neural Networks | a neural net is *just* GEMMs + a nonlinearity + a loss + SGD — hand-coded, no PyTorch |
+| `training_cost_calculator.py` | S6 — Training as a Workload | why one machine is not enough: `6·P·T` FLOPs and `16·P` bytes for real model sizes |
+
+## Run them live
+
+```bash
+cd examples/week1_ml_foundations
+
+# 1. Train a 2-layer MLP on two-moons; watch the loss fall in the terminal
+python3 train_from_scratch.py
+
+# 2. Reproduce the overfitting curve from Segment 2 (train falls, val turns up)
+python3 train_from_scratch.py --overfit
+
+# 3. Quantify the compute/memory walls for BERT, GPT-2, LLaMA, GPT-3
+python3 training_cost_calculator.py
+python3 training_cost_calculator.py --params 7e9 --tokens 2e12   # try your own
+```

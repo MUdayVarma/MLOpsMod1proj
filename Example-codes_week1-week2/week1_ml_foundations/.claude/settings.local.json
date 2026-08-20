@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -W all train_from_scratch.py --overfit)",
+      "Bash(python3 -W all train_from_scratch.py)"
+    ]
+  }
+}
